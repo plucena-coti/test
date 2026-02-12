@@ -26,6 +26,16 @@ export const useFetchPrivateBalance = () => {
 
             if (isDirectAddress) {
                 contractAddress = currentChainIdOrAddress as string;
+                // SKIP NATIVE PrivateCoti as it might use different ABI/logic for now
+                // Identify by checking if it's the known PrivateCoti address for Mainnet or Testnet
+                // Testnet: 0x8783dc215B8305Ea714f91ac16f8Dc5580612353
+                // Mainnet: 0x143705349957A236d74e0aDb5673F880fEDB101f
+                const addr = contractAddress.toLowerCase();
+                if (addr === "0x8783dc215b8305ea714f91ac16f8dc5580612353" ||
+                    addr === "0x143705349957a236d74e0adb5673f880fedb101f") {
+                    console.warn(`Skipping Native PrivateCoti ${contractAddress}`);
+                    return '0.00';
+                }
             } else {
                 return '0.00';
             }
