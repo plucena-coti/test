@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@coti-io/coti-ethers": "^1.0.5",
+    "@coti-io/coti-sdk-typescript": "^1.0.4",
+    "@metamask/providers": "^22.1.1",
+    "ethers": "^6.16.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
