@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMetamask } from './hooks/useMetamask';
 import { useSnap } from './hooks/useSnap';
 import { useFetchPrivateBalance } from './hooks/useFetchPrivateBalance';
@@ -12,16 +12,20 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const { connectWallet, networkName, chainId } = useMetamask({
-    onAccountChanged: async (newAccount) => {
-      setAccount(newAccount);
-      setAesKey(null); // Reset key on account change
-      setBalances({});
-    },
-    onNetworkChanged: async () => {
-      window.location.reload();
-    }
+  const onAccountChanged = useCallback(async (newAccount) => {
+    setAccount(newAccount);
+    setAesKey(null); // Reset key on account change
+    setBalances({});
+  }, []);
+
+  const { connectWallet, networkName, chainId, refreshNetworkState } = useMetamask({
+    onAccountChanged,
+    // onNetworkChanged removed to prevent loop on refreshNetworkState
   });
+
+  useEffect(() => {
+    refreshNetworkState();
+  }, [refreshNetworkState]);
 
   const { getAESKeyFromSnap, isSnapInstalled } = useSnap((err) => setError(err));
   const { fetchPrivateBalance } = useFetchPrivateBalance();
@@ -30,6 +34,7 @@ function App() {
     try {
       await connectWallet(async (acc) => {
         setAccount(acc);
+        await refreshNetworkState();
       });
     } catch (err) {
       setError(err.message);
@@ -58,14 +63,27 @@ function App() {
   };
 
   const handleScanBalances = async () => {
-    if (!account || !aesKey || !chainId) return;
+    console.log("Scan Balances clicked");
+    console.log("Account:", account);
+    console.log("AES Key present:", !!aesKey);
+    console.log("Chain ID:", chainId);
+
+    if (!account || !aesKey || !chainId) {
+      console.warn("Missing requirements for scanning");
+      return;
+    }
 
     setLoading(true);
     setError(null);
     const newBalances = {};
 
     try {
-      const addresses = CONTRACT_ADDRESSES[parseInt(chainId)];
+      const networkId = parseInt(chainId);
+      console.log("Parsed Network ID:", networkId);
+
+      const addresses = CONTRACT_ADDRESSES[networkId];
+      console.log("Addresses found:", addresses);
+
       if (!addresses) {
         setError(`No contract addresses for chain ${chainId}`);
         setLoading(false);
@@ -75,21 +93,25 @@ function App() {
       const tokens = Object.entries(addresses).filter(([name]) =>
         name.startsWith('p.') || name === 'PrivateCoti'
       );
+      console.log("Tokens to scan:", tokens);
 
       for (const [name, address] of tokens) {
         try {
+          console.log(`Fetching balance for ${name} at ${address}...`);
           // fetchPrivateBalance signature: (userAddress, aesKey, contractAddress, isDirectAddress)
           // We pass the address as the 3rd arg, and true for isDirectAddress
           const balance = await fetchPrivateBalance(account, aesKey, address, true);
+          console.log(`Balance for ${name}: ${balance} `);
           newBalances[name] = balance;
         } catch (e) {
-          console.error(`Failed to fetch ${name}:`, e);
+          console.error(`Failed to fetch ${name}: `, e);
           newBalances[name] = "Error";
         }
       }
       setBalances(newBalances);
 
     } catch (err) {
+      console.error("Critical error in scan:", err);
       setError(err.message);
     } finally {
       setLoading(false);
