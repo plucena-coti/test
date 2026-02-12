@@ -135,6 +135,18 @@ function App() {
           </button>
         )}
 
+        {chainId && (
+          <button onClick={() => {
+            const target = parseInt(chainId) === 7082400 ? '0x282b34' : '0x6c11a0'; // Toggle between Mainnet (0x282b34) and Testnet (0x6c11a0)
+            window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: target }],
+            });
+          }} disabled={loading} style={{ backgroundColor: '#444' }}>
+            Switch to {parseInt(chainId) === 7082400 ? 'Mainnet' : 'Testnet'}
+          </button>
+        )}
+
         {account && !aesKey && (
           <button onClick={handleGetKey} disabled={loading}>
             Get AES Key
